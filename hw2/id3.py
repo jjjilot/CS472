@@ -10,6 +10,9 @@ import re
 # Node class for the decision tree
 import node
 
+# my imports
+import math
+
 train = None
 varnames = None
 test = None
@@ -21,8 +24,9 @@ root = None
 # parameter p
 def entropy(p):
     # >>>> YOUR CODE GOES HERE <<<<
-    # For now, always return "0":
-    return 0
+    if p == 0 or p == 1:
+        return 0
+    return -p * math.log2(p) - (1 - p) * math.log2(1 - p)
 
 
 # Compute information gain for a particular split, given the counts
@@ -32,14 +36,64 @@ def entropy(p):
 # total : total length of the data
 def infogain(py_pxi, pxi, py, total):
     # >>>> YOUR CODE GOES HERE <<<<
-    # For now, always return "0":
-    return 0
+    if total == 0:
+        return 0
+
+    # Entropy of Y overall
+    p_y = py / total
+    h_y = entropy(p_y)
+
+    # If the variable doesn't divide data don't split
+    if pxi == 0 or pxi == total:
+        return 0
+
+    # Conditional probabilities
+    p_y_given_x1 = py_pxi / pxi if pxi > 0 else 0
+    p_y_given_x0 = (py - py_pxi) / (total - pxi) if (total - pxi) > 0 else 0
+
+    # Entropy of Y conditioned on X_i
+    h_y_given_x1 = entropy(p_y_given_x1)
+    h_y_given_x0 = entropy(p_y_given_x0)
+
+    # Weighted conditional entropy
+    cond_entropy = (pxi / total) * h_y_given_x1 + ((total - pxi) / total) * h_y_given_x0
+
+    # Information gain
+    gain = h_y - cond_entropy
+    return gain
 
 
 # OTHER SUGGESTED HELPER FUNCTIONS:
 # - collect counts for each variable value with each class label
 # - find the best variable to split on, according to mutual information
 # - partition data based on a given variable
+def compute_counts(data):
+    total = len(data)
+    num_vars = len(data[0]) - 1  # all except the class label
+    py = sum([x[-1] for x in data])  # total y = 1
+
+    stats = []  # list of (py_pxi, pxi)
+
+    for i in range(num_vars):
+        pxi = sum([x[i] for x in data])
+        py_pxi = sum([x[i] and x[-1] for x in data])  # Only count when both are 1
+        stats.append((py_pxi, pxi))
+
+    return stats, py, total
+
+
+def choose_best_variable(data):
+    stats, py, total = compute_counts(data)
+    best_gain = -1
+    best_var = None
+
+    for i, (py_pxi, pxi) in enumerate(stats):
+        gain = infogain(py_pxi, pxi, py, total)
+        if gain > best_gain:
+            best_gain = gain
+            best_var = i
+
+    return best_var
 
 
 # Load data from a file
@@ -66,8 +120,35 @@ def print_model(root, modelfile):
 # pure leaf or all splits look bad.
 def build_tree(data, varnames):
     # >>>> YOUR CODE GOES HERE <<<<
-    # For now, always return a leaf predicting "1":
-    return node.Leaf(varnames, 1)
+    # Base case 1: empty
+    if not data:
+        return node.Leaf(varnames, 0)
+
+    labels = [row[-1] for row in data]
+
+    # Base case 2: all same label
+    if all(label == labels[0] for label in labels):
+        return node.Leaf(varnames, labels[0])
+
+    best_var = choose_best_variable(data)
+
+    # Partition data
+    left = [row for row in data if row[best_var] == 0]
+    right = [row for row in data if row[best_var] == 1]
+
+    # Split on most common variable once data is stagnant (labels don't matter)
+    if not left or not right:
+        majority_label = max(set(labels), key=labels.count)
+        return node.Leaf(varnames, majority_label)
+
+    # print(f"Splitting on variable {best_var}")
+    # print(f"Left size: {len(left)}, Right size: {len(right)}")
+    
+    # Again!
+    left_branch = build_tree(left, varnames)
+    right_branch = build_tree(right, varnames)
+
+    return node.Split(varnames, best_var, left_branch, right_branch)
 
 
 # "varnames" is a list of names, one for each variable
