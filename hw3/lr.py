@@ -12,6 +12,7 @@ import re
 from math import log
 from math import exp
 from math import sqrt
+import numpy as np # to prevent big numbers destroying everything : )
 
 MAX_ITERS = 100
 
@@ -34,27 +35,49 @@ def read_data(filename):
 
 # Train a logistic regression model using batch gradient descent
 def train_lr(data, eta, l2_reg_weight):
-    numvars = len(data[0][0])
-    w = [0.0] * numvars
+    #MY CODE HERE
+    
+    # Extract features and labels as NumPy arrays
+    X = np.array([x for x, _ in data])
+    y = np.array([1 if label == 1 else 0 for _, label in data])
+
+    # Initialize weights and bias
+    numvars = X.shape[1]
+    w = np.zeros(numvars)
     b = 0.0
 
-    #
-    # YOUR CODE HERE
-    #
+    for _ in range(MAX_ITERS):
+        # Linear combination (z) and sigmoid prediction (p)
+        z = np.dot(X, w) + b
+        p = 1 / (1 + np.exp(-z))
 
-    return (w, b)
+        # Calculate gradients
+        errors = p - y
+        grad_w = np.dot(errors, X) + l2_reg_weight * w
+        grad_b = np.sum(errors)
+
+        # Update weights and bias
+        w -= eta * grad_w
+        b -= eta * grad_b
+
+        # Convergence check
+        grad_magnitude = sqrt(np.sum(grad_w ** 2) + grad_b ** 2)
+        if grad_magnitude < 0.0001:
+            print("Converged")
+            break
+
+    return w, b
 
 
 # Predict the probability of the positive label (y=+1) given the
 # attributes, x.
 def predict_lr(model, x):
     (w, b) = model
-
-    #
     # YOUR CODE HERE
-    #
-
-    return 0.5 # This is an random probability, fix this according to your solution
+    
+    # Vectorized linear combination and sigmoid
+    z = np.dot(w, x) + b
+    return 1 / (1 + np.exp(-z))
 
 
 # Load train and test data.  Learn model.  Report accuracy.

@@ -38,10 +38,27 @@ def train_perceptron(data):
     numvars = len(data[0][0])
     w = [0.0] * numvars
     b = 0.0
-
-    #
     # YOUR CODE HERE!
-    #
+
+    # Training loop
+    for _ in range(MAX_ITERS):
+        error_count = 0
+        for (x, y) in data:
+            # Compute activation
+            activation = sum(w[j] * x[j] for j in range(numvars)) + b
+            
+            # Check if the prediction is incorrect
+            if y * activation <= 0:
+                # Update weights and bias
+                for j in range(numvars):
+                    w[j] += y * x[j]
+                b += y
+                error_count += 1
+        
+        # Stop early if converged
+        if error_count == 0:
+            print("Converged")
+            break
 
     return (w, b)
 
@@ -50,12 +67,10 @@ def train_perceptron(data):
 # (NOTE: This should be a real-valued number, not simply +1/-1.)
 def predict_perceptron(model, x):
     (w, b) = model
-
-    #
     # YOUR CODE HERE!
-    #
-
-    return 0.0
+    # Compute activation as a real number
+    activation = sum(w[j] * x[j] for j in range(len(w))) + b
+    return activation
 
 
 # Load train and test data.  Learn model.  Report accuracy.
